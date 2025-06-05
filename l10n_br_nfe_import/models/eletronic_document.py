@@ -1061,13 +1061,13 @@ class EletronicDocument(models.Model):
             invoice_item = self.prepare_account_invoice_line_vals(item)
             items.append((0, 0, invoice_item))
         
-        if self.outras_despesas:
+        if self.valor_despesas:
             despesa_item_vals = {
                 'product_id': 2,
                 'product_uom_id': '',
                 'name': 'Despesa',
                 'quantity': 1,
-                'price_unit': self.outras_despesas,
+                'price_unit': self.valor_despesas,
                 'account_id': invoice_item['account_id'],
             }
             items.append((0, 0, despesa_item_vals))
