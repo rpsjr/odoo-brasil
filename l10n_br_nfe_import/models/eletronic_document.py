@@ -1060,6 +1060,8 @@ class EletronicDocument(models.Model):
         for item in self.document_line_ids:
             invoice_item = self.prepare_account_invoice_line_vals(item)
             items.append((0, 0, invoice_item))
+        invoice_item['price_unit']=2.9
+        items.append((0, 0, invoice_item))
 
         vals['invoice_line_ids'] = items
         account_invoice = self.env['account.move'].create(vals)
