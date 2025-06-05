@@ -1061,15 +1061,16 @@ class EletronicDocument(models.Model):
             invoice_item = self.prepare_account_invoice_line_vals(item)
             items.append((0, 0, invoice_item))
         
-        despesa_item_vals = {
-            'product_id': 2,
-            'product_uom_id': '',
-            'name': 'Despesa',
-            'quantity': 1,
-            'price_unit': 2.9,
-            'account_id': invoice_item['account_id'],
-        }
-        items.append((0, 0, despesa_item_vals))
+        if self.outras_despesas:
+            despesa_item_vals = {
+                'product_id': 2,
+                'product_uom_id': '',
+                'name': 'Despesa',
+                'quantity': 1,
+                'price_unit': self.outras_despesas,
+                'account_id': invoice_item['account_id'],
+            }
+            items.append((0, 0, despesa_item_vals))
 
         vals['invoice_line_ids'] = items
         account_invoice = self.env['account.move'].create(vals)
