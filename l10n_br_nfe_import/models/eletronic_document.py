@@ -677,15 +677,24 @@ class EletronicDocument(models.Model):
             raise UserError(
                 'A empresa não possui uma sequência de produto configurado!')
         ncm = get(nfe_item, 'NCM', str)
-        ncm_id = self.env['account.ncm'].search([
-            ('code', '=', ncm)], limit=1)
-        if not ncm_id and ncm and ncm != 'None' and len(ncm) == 8:
-            ncm_formatted = "%s.%s.%s" % (ncm[:4], ncm[4:6], ncm[6:])
-            ncm_id = self.env['account.ncm'].search([
-                ('code', '=', ncm_formatted)], limit=1)
+        ncm_id = self.env['account.ncm'].browse()
+        if ncm and ncm != 'None':
+            ncm_id = self.env['account.ncm'].search([('code', '=', ncm)], limit=1)
+            
+            ncm_digits = ''.join(filter(str.isdigit, ncm))
+            if not ncm_id and ncm_digits:
+                ncm_id = self.env['account.ncm'].search([('code', '=', ncm_digits)], limit=1)
+                
+                if not ncm_id and len(ncm_digits) == 8:
+                    ncm_formatted_1 = "%s.%s.%s" % (ncm_digits[:4], ncm_digits[4:6], ncm_digits[6:])
+                    ncm_formatted_2 = "%s.%s.%s.%s" % (ncm_digits[:2], ncm_digits[2:4], ncm_digits[4:6], ncm_digits[6:])
+                    ncm_id = self.env['account.ncm'].search([
+                        ('code', 'in', [ncm_formatted_1, ncm_formatted_2])
+                    ], limit=1)
 
+        ncm_category_query = ''.join(filter(str.isdigit, ncm))[:4] if ncm and ncm != 'None' else ncm[:4] if ncm else ''
         category = self.env['product.category'].search(
-            [('l10n_br_ncm_category_ids.name', '=', ncm[:4])], limit=1)
+            [('l10n_br_ncm_category_ids.name', '=', ncm_category_query)], limit=1)
 
         sequence = self.env['ir.sequence'].browse(seq_id)
         code = sequence.next_by_id()

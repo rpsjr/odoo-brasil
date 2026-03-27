@@ -27,12 +27,20 @@ def migrate(cr, version):
     
     updated_count = 0
     for product_id, (product, ncm) in products_to_fix.items():
-        ncm_id = env['account.ncm'].search([('code', '=', ncm)], limit=1)
-        
-        # If not found directly, try the dot-separated format (e.g. 8471.30.12 instead of 84713012)
-        if not ncm_id and isinstance(ncm, str) and len(ncm) == 8:
-            ncm_formatted = "%s.%s.%s" % (ncm[:4], ncm[4:6], ncm[6:])
-            ncm_id = env['account.ncm'].search([('code', '=', ncm_formatted)], limit=1)
+        ncm_id = False
+        if ncm and ncm != 'None':
+            ncm_id = env['account.ncm'].search([('code', '=', ncm)], limit=1)
+            
+            ncm_digits = ''.join(filter(str.isdigit, str(ncm)))
+            if not ncm_id and ncm_digits:
+                ncm_id = env['account.ncm'].search([('code', '=', ncm_digits)], limit=1)
+                
+                if not ncm_id and len(ncm_digits) == 8:
+                    ncm_formatted_1 = "%s.%s.%s" % (ncm_digits[:4], ncm_digits[4:6], ncm_digits[6:])
+                    ncm_formatted_2 = "%s.%s.%s.%s" % (ncm_digits[:2], ncm_digits[2:4], ncm_digits[4:6], ncm_digits[6:])
+                    ncm_id = env['account.ncm'].search([
+                        ('code', 'in', [ncm_formatted_1, ncm_formatted_2])
+                    ], limit=1)
             
         if ncm_id:
             product.write({'l10n_br_ncm_id': ncm_id.id})
