@@ -165,8 +165,9 @@ class AccountMove(models.Model):
                     if not line.is_delivery_expense_or_insurance()
                 ), 2)
                 item.l10n_br_delivery_amount = lines_total
-                if delivery_line:
+                if delivery_line and delivery_line.price_unit != lines_total:
                     delivery_line.price_unit = lines_total
+                    item.with_context(check_move_validity=False)._move_autocomplete_invoice_lines_values()
             else:
                 item.l10n_br_delivery_amount = delivery_line.price_total
                 item.compute_lines_partition("delivery")
@@ -191,8 +192,9 @@ class AccountMove(models.Model):
                     if not line.is_delivery_expense_or_insurance()
                 ), 2)
                 item.l10n_br_expense_amount = lines_total
-                if expense_line:
+                if expense_line and expense_line.price_unit != lines_total:
                     expense_line.price_unit = lines_total
+                    item.with_context(check_move_validity=False)._move_autocomplete_invoice_lines_values()
             else:
                 item.l10n_br_expense_amount = expense_line.price_total
                 item.compute_lines_partition("expense")
@@ -217,8 +219,9 @@ class AccountMove(models.Model):
                     if not line.is_delivery_expense_or_insurance()
                 ), 2)
                 item.l10n_br_insurance_amount = lines_total
-                if insurance_line:
+                if insurance_line and insurance_line.price_unit != lines_total:
                     insurance_line.update({'price_unit': lines_total})
+                    item.with_context(check_move_validity=False)._move_autocomplete_invoice_lines_values()
             else:
                 item.l10n_br_insurance_amount = insurance_line.price_total
                 item.compute_lines_partition("insurance")
