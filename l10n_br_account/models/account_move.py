@@ -160,10 +160,10 @@ class AccountMove(models.Model):
                 lambda x: x.l10n_br_is_delivery
             )
             if item.type in ('in_refund', 'out_refund'):
-                lines_total = sum(
+                lines_total = round(sum(
                     line.l10n_br_delivery_amount for line in item.invoice_line_ids
                     if not line.is_delivery_expense_or_insurance()
-                )
+                ), 2)
                 item.l10n_br_delivery_amount = lines_total
                 if delivery_line:
                     delivery_line.price_unit = lines_total
@@ -186,10 +186,10 @@ class AccountMove(models.Model):
                 lambda x: x.l10n_br_is_expense
             )
             if item.type in ('in_refund', 'out_refund'):
-                lines_total = sum(
+                lines_total = round(sum(
                     line.l10n_br_expense_amount for line in item.invoice_line_ids
                     if not line.is_delivery_expense_or_insurance()
-                )
+                ), 2)
                 item.l10n_br_expense_amount = lines_total
                 if expense_line:
                     expense_line.price_unit = lines_total
@@ -212,13 +212,13 @@ class AccountMove(models.Model):
                 lambda x: x.l10n_br_is_insurance
             )
             if item.type in ('in_refund', 'out_refund'):
-                lines_total = sum(
+                lines_total = round(sum(
                     line.l10n_br_insurance_amount for line in item.invoice_line_ids
                     if not line.is_delivery_expense_or_insurance()
-                )
+                ), 2)
                 item.l10n_br_insurance_amount = lines_total
                 if insurance_line:
-                    insurance_line.price_unit = lines_total
+                    insurance_line.update({'price_unit': lines_total})
             else:
                 item.l10n_br_insurance_amount = insurance_line.price_total
                 item.compute_lines_partition("insurance")
