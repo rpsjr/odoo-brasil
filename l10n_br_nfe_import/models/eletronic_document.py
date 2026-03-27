@@ -678,7 +678,11 @@ class EletronicDocument(models.Model):
                 'A empresa não possui uma sequência de produto configurado!')
         ncm = get(nfe_item, 'NCM', str)
         ncm_id = self.env['account.ncm'].search([
-            ('code', '=', ncm)])
+            ('code', '=', ncm)], limit=1)
+        if not ncm_id and ncm and ncm != 'None' and len(ncm) == 8:
+            ncm_formatted = "%s.%s.%s" % (ncm[:4], ncm[4:6], ncm[6:])
+            ncm_id = self.env['account.ncm'].search([
+                ('code', '=', ncm_formatted)], limit=1)
 
         category = self.env['product.category'].search(
             [('l10n_br_ncm_category_ids.name', '=', ncm[:4])], limit=1)
@@ -691,7 +695,7 @@ class EletronicDocument(models.Model):
             'purchase_ok': True,
             'sale_ok': False,
             'type': 'product',
-            'l10n_br_ncm_id': ncm_id.id,
+            'l10n_br_ncm_id': ncm_id.id if ncm_id else False,
             'standard_price': get(nfe_item, 'vUnCom'),
             'lst_price': 0.0,
             'l10n_br_cest': get(nfe_item, 'CEST', str),
