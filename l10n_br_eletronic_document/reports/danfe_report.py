@@ -4,6 +4,7 @@ import logging
 from lxml import etree
 from io import BytesIO
 from odoo import models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -31,7 +32,10 @@ class IrActionsReport(models.Model):
 
         nfe = self.env['eletronic.document'].search([('id', 'in', res_ids)])
 
-        nfe_xml = base64.decodestring(nfe.nfe_processada or nfe.xml_to_send)
+        xml_string = nfe.nfe_processada or nfe.xml_to_send
+        if not xml_string:
+            raise UserError('Não há XML para impressão do DANFE')
+        nfe_xml = base64.decodestring(xml_string)
 
         cce_xml_element = []
         cce_list = self.env['ir.attachment'].search([
@@ -42,8 +46,9 @@ class IrActionsReport(models.Model):
 
         if cce_list:
             for cce in cce_list:
-                cce_xml = base64.decodestring(cce.datas)
-                cce_xml_element.append(etree.fromstring(cce_xml))
+                if cce.datas:
+                    cce_xml = base64.decodestring(cce.datas)
+                    cce_xml_element.append(etree.fromstring(cce_xml))
 
         logo = False
         if nfe.state != 'imported' and nfe.company_id.logo:

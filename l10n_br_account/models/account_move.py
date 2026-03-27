@@ -151,8 +151,6 @@ class AccountMove(models.Model):
 
     @api.onchange(
         "invoice_line_ids",
-        "invoice_line_ids.price_unit",
-        "invoice_line_ids.quantity",
     )
     def _compute_l10n_br_delivery_amount(self):
         for item in self:
