@@ -745,6 +745,9 @@ class EletronicDocument(models.Model):
             'quantity': item.quantidade,
             'price_unit': item.preco_unitario,
             'account_id': account_id.id,
+            'l10n_br_expense_amount': item.outras_despesas,
+            'l10n_br_delivery_amount': item.frete,
+            'l10n_br_insurance_amount': item.seguro,
         }
         return vals
 
@@ -1057,19 +1060,32 @@ class EletronicDocument(models.Model):
         #     purchase_order_id = vals['purchase_id']
 
         items = []
+        total_despesas = sum(item.outras_despesas for item in self.document_line_ids if item.outras_despesas)
+        
         for item in self.document_line_ids:
             invoice_item = self.prepare_account_invoice_line_vals(item)
             items.append((0, 0, invoice_item))
-            if item.outras_despesas:
-                despesa_item_vals = {
-                    'product_id': 2,
-                    'product_uom_id': '',
-                    'name': 'Despesa ' + item.product_xprod,
-                    'quantity': 1,
-                    'price_unit': item.outras_despesas,
-                    'account_id': invoice_item['account_id'],
-                }
-                items.append((0, 0, despesa_item_vals))
+
+        if total_despesas > 0:
+            product = self.env.ref("l10n_br_account.product_product_expense", raise_if_not_found=False)
+            account_id = False
+            if product:
+                account_id = (product.property_account_expense_id.id or 
+                              product.categ_id.property_account_expense_categ_id.id)
+            if not account_id:
+                account = self.env['ir.property'].with_context(
+                    force_company=self.company_id.id).get('property_account_expense_categ_id', 'product.category')
+                account_id = account.id if account else False
+
+            despesa_item_vals = {
+                'product_id': product.id if product else False,
+                'name': product.name if product else 'Outras Despesas',
+                'quantity': 1,
+                'price_unit': total_despesas,
+                'account_id': account_id,
+                'l10n_br_is_expense': True,
+            }
+            items.append((0, 0, despesa_item_vals))
 
         vals['invoice_line_ids'] = items
         account_invoice = self.env['account.move'].create(vals)
