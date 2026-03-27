@@ -280,7 +280,7 @@ class AccountMove(models.Model):
             'valor_servicos': total_servicos,
             'valor_produtos': total_produtos,
             'valor_desconto': total_desconto,
-            'valor_final': total_produtos + total_servicos,
+            'valor_final': invoice.amount_total,
         })
 
         return vals
