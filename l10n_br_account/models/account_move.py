@@ -92,19 +92,22 @@ class AccountMove(models.Model):
             for line in self.invoice_line_ids
             if not line.is_delivery_expense_or_insurance()
         )
-        for line in self.invoice_line_ids.filtered(
+        total_amount_distributed = 0.0
+        lines = self.invoice_line_ids.filtered(
             lambda x: not x.is_delivery_expense_or_insurance()
-        ):
+        )
+        for i, line in enumerate(lines):
             field_name = "l10n_br_{}_amount".format(line_type)
-            line.update(
-                {
-                    field_name: compute_partition_amount(
-                        self[field_name],
-                        line.price_unit * line.quantity,
-                        total,
-                    )
-                }
-            )
+            if i == len(lines) - 1:
+                amount = round(self[field_name] - total_amount_distributed, 2)
+            else:
+                amount = compute_partition_amount(
+                    self[field_name],
+                    line.price_unit * line.quantity,
+                    total,
+                )
+                total_amount_distributed += amount
+            line.update({field_name: amount})
 
     def handle_delivery_expense_insurance_lines(self, line_type):
         if line_type not in ("delivery", "expense", "insurance"):
@@ -164,7 +167,11 @@ class AccountMove(models.Model):
                 ), 2)
                 item.l10n_br_delivery_amount = lines_total
                 if delivery_line and delivery_line.price_unit != lines_total:
-                    delivery_line.price_unit = lines_total
+                    delivery_line.update({
+                        'price_unit': lines_total,
+                        'debit': lines_total if delivery_line.debit else 0.0,
+                        'credit': lines_total if delivery_line.credit else 0.0,
+                    })
                     item.with_context(check_move_validity=False)._recompute_dynamic_lines(recompute_all_taxes=True)
                     item.with_context(check_move_validity=False)._recompute_payment_terms_lines()
             else:
@@ -192,7 +199,11 @@ class AccountMove(models.Model):
                 ), 2)
                 item.l10n_br_expense_amount = lines_total
                 if expense_line and expense_line.price_unit != lines_total:
-                    expense_line.price_unit = lines_total
+                    expense_line.update({
+                        'price_unit': lines_total,
+                        'debit': lines_total if expense_line.debit else 0.0,
+                        'credit': lines_total if expense_line.credit else 0.0,
+                    })
                     item.with_context(check_move_validity=False)._recompute_dynamic_lines(recompute_all_taxes=True)
                     item.with_context(check_move_validity=False)._recompute_payment_terms_lines()
             else:
@@ -220,7 +231,11 @@ class AccountMove(models.Model):
                 ), 2)
                 item.l10n_br_insurance_amount = lines_total
                 if insurance_line and insurance_line.price_unit != lines_total:
-                    insurance_line.update({'price_unit': lines_total})
+                    insurance_line.update({
+                        'price_unit': lines_total,
+                        'debit': lines_total if insurance_line.debit else 0.0,
+                        'credit': lines_total if insurance_line.credit else 0.0,
+                    })
                     item.with_context(check_move_validity=False)._recompute_dynamic_lines(recompute_all_taxes=True)
                     item.with_context(check_move_validity=False)._recompute_payment_terms_lines()
             else:
