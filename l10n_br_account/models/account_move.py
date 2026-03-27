@@ -159,8 +159,17 @@ class AccountMove(models.Model):
             delivery_line = item.invoice_line_ids.filtered(
                 lambda x: x.l10n_br_is_delivery
             )
-            item.l10n_br_delivery_amount = delivery_line.price_total
-            item.compute_lines_partition("delivery")
+            if item.type in ('in_refund', 'out_refund'):
+                lines_total = sum(
+                    line.l10n_br_delivery_amount for line in item.invoice_line_ids
+                    if not line.is_delivery_expense_or_insurance()
+                )
+                item.l10n_br_delivery_amount = lines_total
+                if delivery_line:
+                    delivery_line.price_unit = lines_total
+            else:
+                item.l10n_br_delivery_amount = delivery_line.price_total
+                item.compute_lines_partition("delivery")
 
     def _inverse_l10n_br_delivery_amount(self):
         for item in self:
@@ -176,8 +185,17 @@ class AccountMove(models.Model):
             expense_line = item.invoice_line_ids.filtered(
                 lambda x: x.l10n_br_is_expense
             )
-            item.l10n_br_expense_amount = expense_line.price_total
-            item.compute_lines_partition("expense")
+            if item.type in ('in_refund', 'out_refund'):
+                lines_total = sum(
+                    line.l10n_br_expense_amount for line in item.invoice_line_ids
+                    if not line.is_delivery_expense_or_insurance()
+                )
+                item.l10n_br_expense_amount = lines_total
+                if expense_line:
+                    expense_line.price_unit = lines_total
+            else:
+                item.l10n_br_expense_amount = expense_line.price_total
+                item.compute_lines_partition("expense")
 
     def _inverse_l10n_br_expense_amount(self):
         for item in self:
@@ -193,8 +211,17 @@ class AccountMove(models.Model):
             insurance_line = item.invoice_line_ids.filtered(
                 lambda x: x.l10n_br_is_insurance
             )
-            item.l10n_br_insurance_amount = insurance_line.price_total
-            item.compute_lines_partition("insurance")
+            if item.type in ('in_refund', 'out_refund'):
+                lines_total = sum(
+                    line.l10n_br_insurance_amount for line in item.invoice_line_ids
+                    if not line.is_delivery_expense_or_insurance()
+                )
+                item.l10n_br_insurance_amount = lines_total
+                if insurance_line:
+                    insurance_line.price_unit = lines_total
+            else:
+                item.l10n_br_insurance_amount = insurance_line.price_total
+                item.compute_lines_partition("insurance")
 
     def _inverse_l10n_br_insurance_amount(self):
         for item in self:
