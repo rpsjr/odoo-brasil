@@ -268,11 +268,12 @@ class AccountMove(models.Model):
         total_desconto = 0
         for inv_line in invoice_lines:
             total_desconto += round(inv_line.price_unit * inv_line.quantity * inv_line.discount / 100, 2)
+            item_addons = inv_line.l10n_br_expense_amount + inv_line.l10n_br_delivery_amount + inv_line.l10n_br_insurance_amount
             if inv_line.product_id.type == 'service':
-                total_servicos += inv_line.price_total
+                total_servicos += inv_line.price_total + item_addons
                 bruto_servicos += round(inv_line.quantity * inv_line.price_unit, 2)
             else:
-                total_produtos += inv_line.price_total
+                total_produtos += inv_line.price_total + item_addons
                 bruto_produtos += round(inv_line.quantity * inv_line.price_unit, 2)
 
         vals.update({
@@ -411,7 +412,7 @@ class AccountMoveLine(models.Model):
             'preco_unitario': self.price_unit,
             'valor_bruto': round(self.quantity * self.price_unit, 2),
             'desconto': round(self.quantity * self.price_unit, 2) - self.price_subtotal,
-            'valor_liquido': self.price_total,
+            'valor_liquido': self.price_total + self.l10n_br_expense_amount + self.l10n_br_delivery_amount + self.l10n_br_insurance_amount,
             'origem': self.product_id.l10n_br_origin,
             #  'tributos_estimados': self.tributos_estimados,
             'ncm': self.product_id.l10n_br_ncm_id.code,
