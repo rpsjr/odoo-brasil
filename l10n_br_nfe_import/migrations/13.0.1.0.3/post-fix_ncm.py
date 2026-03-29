@@ -42,6 +42,16 @@ def migrate(cr, version):
                         ('code', 'in', [ncm_formatted_1, ncm_formatted_2])
                     ], limit=1)
             
+            if not ncm_id and ncm_digits:
+                ncm_code = ncm
+                if len(ncm_digits) == 8:
+                    ncm_code = "%s.%s.%s" % (ncm_digits[:4], ncm_digits[4:6], ncm_digits[6:])
+                _logger.info("NCM '%s' not found in DB. Creating it automatically.", ncm_code)
+                ncm_id = env['account.ncm'].create({
+                    'code': ncm_code,
+                    'name': 'NCM Importado Automaticamente'
+                })
+            
         if ncm_id:
             product.write({'l10n_br_ncm_id': ncm_id.id})
             updated_count += 1

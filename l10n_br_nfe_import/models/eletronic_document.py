@@ -73,6 +73,39 @@ class EletronicDocument(models.Model):
 
     state = fields.Selection(selection_add=[('imported', 'Importado')])
 
+    account_move_id = fields.Many2one(
+        'account.move',
+        string='Fatura Gerada',
+        compute='_compute_account_move_id',
+        store=False,
+    )
+    has_active_invoice = fields.Boolean(
+        string='Possui Fatura Ativa',
+        compute='_compute_account_move_id',
+        store=False,
+    )
+
+    def _compute_account_move_id(self):
+        for edoc in self:
+            move = self.env['account.move'].search([
+                ('eletronic_doc_id', '=', edoc.id),
+                ('state', 'in', ('draft', 'posted')),
+            ], limit=1)
+            edoc.account_move_id = move
+            edoc.has_active_invoice = bool(move)
+
+    def action_view_account_move(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Fatura',
+            'res_model': 'account.move',
+            'res_id': self.account_move_id.id,
+            'view_type': 'form',
+            'views': [[False, 'form']],
+            'target': 'current',
+        }
+
     def get_ide(self, nfe, operacao):
         ''' Importa a seção <ide> do xml'''
         ide = nfe.NFe.infNFe.ide
@@ -600,13 +633,8 @@ class EletronicDocument(models.Model):
         invoice_dict.pop('destinatary', False)
         invoice_eletronic = self.env['eletronic.document'].create(invoice_dict)
 
-        # if account_invoice_automation:
-        #     invoice = invoice_eletronic.prepare_account_invoice_vals(
-        #         company_id, tax_automation=tax_automation,
-        #         supplierinfo_automation=supplierinfo_automation,
-        #         fiscal_position_id=fiscal_position_id,
-        #         payment_term_id=payment_term_id)
-        #     invoice_eletronic.invoice_id = invoice.id
+        if account_invoice_automation:
+            invoice_eletronic.generate_account_move()
 
     def existing_invoice(self, nfe):
         if hasattr(nfe, 'protNFe'):
@@ -691,6 +719,15 @@ class EletronicDocument(models.Model):
                     ncm_id = self.env['account.ncm'].search([
                         ('code', 'in', [ncm_formatted_1, ncm_formatted_2])
                     ], limit=1)
+
+            if not ncm_id and ncm_digits:
+                ncm_code = ncm
+                if len(ncm_digits) == 8:
+                    ncm_code = "%s.%s.%s" % (ncm_digits[:4], ncm_digits[4:6], ncm_digits[6:])
+                ncm_id = self.env['account.ncm'].create({
+                    'code': ncm_code,
+                    'name': 'NCM Importado Automaticamente'
+                })
 
         ncm_category_query = ''.join(filter(str.isdigit, ncm))[:4] if ncm and ncm != 'None' else ncm[:4] if ncm else ''
         category = self.env['product.category'].search(

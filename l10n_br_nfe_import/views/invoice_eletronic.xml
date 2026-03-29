@@ -5,9 +5,27 @@
         <field name="model">eletronic.document</field>
         <field name="inherit_id" ref="l10n_br_eletronic_document.view_eletronic_document_form"/>
         <field name="arch" type="xml">
+            <!-- Botão só aparece em state=imported E sem fatura ativa (draft/posted) -->
             <field name="state" position="before">
-                <button name="generate_account_move" states="imported" string="Terminar processo de importação" type="object" class="oe_highlight"/>
+                <button name="generate_account_move" type="object" string="Terminar processo de importação"
+                    class="oe_highlight"
+                    attrs="{'invisible': ['|', ('state', '!=', 'imported'), ('has_active_invoice', '=', True)]}"/>
+                <field name="has_active_invoice" invisible="1"/>
             </field>
+            <!-- Smart button: link para a fatura gerada -->
+            <div name="alertas" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="action_view_account_move" type="object"
+                        class="oe_stat_button" icon="fa-pencil-square-o"
+                        attrs="{'invisible': [('account_move_id', '=', False)]}">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_text">Fatura</span>
+                            <field name="account_move_id" class="o_stat_value" nolabel="1"/>
+                        </div>
+                    </button>
+                </div>
+                <field name="account_move_id" invisible="1"/>
+            </div>
         </field>
     </record>
 
