@@ -6,6 +6,18 @@ class AccountMove(models.Model):
 
     eletronic_doc_id = fields.Many2one('eletronic.document', string="Nota Fiscal")
 
+    def action_view_eletronic_document(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'NF-e',
+            'res_model': 'eletronic.document',
+            'res_id': self.eletronic_doc_id.id,
+            'view_type': 'form',
+            'views': [[False, 'form']],
+            'target': 'current',
+        }
+
     def _recompute_payment_terms_lines(self):
         return super(AccountMove, self.with_context(eletronic_doc_id=self.eletronic_doc_id))._recompute_payment_terms_lines()
 
