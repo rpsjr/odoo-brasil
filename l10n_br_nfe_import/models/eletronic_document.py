@@ -1114,14 +1114,17 @@ class EletronicDocument(models.Model):
         #     purchase_order_id = vals['purchase_id']
 
         items = []
-        total_despesas = sum(item.outras_despesas for item in self.document_line_ids if item.outras_despesas)
-        
+        total_frete = round(sum(item.frete for item in self.document_line_ids if item.frete), 2)
+        total_seguro = round(sum(item.seguro for item in self.document_line_ids if item.seguro), 2)
+        total_despesas = round(sum(item.outras_despesas for item in self.document_line_ids if item.outras_despesas), 2)
+
         for item in self.document_line_ids:
             invoice_item = self.prepare_account_invoice_line_vals(item)
             items.append((0, 0, invoice_item))
 
-        if total_despesas > 0:
-            product = self.env.ref("l10n_br_account.product_product_expense", raise_if_not_found=False)
+        # Helper para encontrar conta de despesa, frete e seguro
+        def _get_account_id(product_external_id):
+            product = self.env.ref(product_external_id, raise_if_not_found=False)
             account_id = False
             if product:
                 account_id = (product.property_account_expense_id.id or 
@@ -1130,16 +1133,40 @@ class EletronicDocument(models.Model):
                 account = self.env['ir.property'].with_context(
                     force_company=self.company_id.id).get('property_account_expense_categ_id', 'product.category')
                 account_id = account.id if account else False
+            return product, account_id
 
-            despesa_item_vals = {
+        if total_despesas > 0:
+            product, account_id = _get_account_id("l10n_br_account.product_product_expense")
+            items.append((0, 0, {
                 'product_id': product.id if product else False,
                 'name': product.name if product else 'Outras Despesas',
                 'quantity': 1,
                 'price_unit': total_despesas,
                 'account_id': account_id,
                 'l10n_br_is_expense': True,
-            }
-            items.append((0, 0, despesa_item_vals))
+            }))
+
+        if total_frete > 0:
+            product, account_id = _get_account_id("l10n_br_account.product_product_delivery")
+            items.append((0, 0, {
+                'product_id': product.id if product else False,
+                'name': product.name if product else 'Frete',
+                'quantity': 1,
+                'price_unit': total_frete,
+                'account_id': account_id,
+                'l10n_br_is_delivery': True,
+            }))
+
+        if total_seguro > 0:
+            product, account_id = _get_account_id("l10n_br_account.product_product_insurance")
+            items.append((0, 0, {
+                'product_id': product.id if product else False,
+                'name': product.name if product else 'Seguro',
+                'quantity': 1,
+                'price_unit': total_seguro,
+                'account_id': account_id,
+                'l10n_br_is_insurance': True,
+            }))
 
         vals['invoice_line_ids'] = items
         account_invoice = self.env['account.move'].create(vals)
