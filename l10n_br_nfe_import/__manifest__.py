@@ -1,6 +1,6 @@
 {  # pylint: disable=C8101,C8103
     "name": "Importação de Documento Fiscal Eletronico",
-    "version": "13.0.1.0.4",
+    "version": "13.0.1.0.5",
     "category": "Account addons",
     "license": "AGPL-3",
     "author": "Trustcode",
@@ -15,6 +15,7 @@
         "data/payment_term.xml",
         "security/ir.model.access.csv",
         "views/res_config_settings.xml",
+        "views/account_move.xml",
         "views/invoice_eletronic.xml",
         "views/product_category.xml",
         "wizard/import_nfe.xml",
@@ -23,3 +24,4 @@
     ],
     "installable": True,
 }
+
