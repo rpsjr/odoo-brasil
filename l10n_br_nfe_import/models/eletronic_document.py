@@ -781,12 +781,18 @@ class EletronicDocument(models.Model):
             if product.property_account_expense_id:
                 account_id = product.property_account_expense_id
             else:
-                account_id =\
-                    product.categ_id.property_account_expense_categ_id
+                account_id = product.categ_id.property_account_expense_categ_id
         else:
             account_id = self.env['ir.property'].with_context(
                 force_company=self.company_id.id).get(
                     'property_account_expense_categ_id', 'product.category')
+
+        # Desconto: o edoc armazena o valor absoluto (R$); a invoice line exige
+        # o percentual. Calculamos sobre o valor bruto (qty * preco_unitario).
+        discount_pct = 0.0
+        valor_bruto = item.quantidade * item.preco_unitario
+        if valor_bruto and item.desconto:
+            discount_pct = round(item.desconto / valor_bruto * 100.0, 6)
 
         vals = {
             'product_id': item.product_id.id,
@@ -794,8 +800,11 @@ class EletronicDocument(models.Model):
             'name': item.name if item.name else item.product_xprod,
             'quantity': item.quantidade,
             'price_unit': item.preco_unitario,
+            'discount': discount_pct,
             'account_id': account_id.id,
-            'l10n_br_expense_amount': item.outras_despesas,
+            # Frete e seguro são rateados por linha (usados em devoluções parciais).
+            # outras_despesas NÃO é setado aqui pois já é consolidado em uma
+            # linha separada em generate_account_move(), evitando dupla contagem.
             'l10n_br_delivery_amount': item.frete,
             'l10n_br_insurance_amount': item.seguro,
         }
@@ -1075,10 +1084,6 @@ class EletronicDocument(models.Model):
         journal_id = self.env['account.move'].with_context(
             default_type=operation, default_company_id=self.company_id.id
         ).default_get(['journal_id'])['journal_id']
-        partner = self.partner_id.with_context(force_company=self.company_id.id)
-        account_id = partner.property_account_payable_id.id \
-            if operation == 'in_invoice' else \
-            partner.property_account_receivable_id.id
 
         vals = {
             'eletronic_doc_id': self.id,
@@ -1091,7 +1096,6 @@ class EletronicDocument(models.Model):
             'date': self.data_emissao.date(),
             'partner_id': self.partner_id.id,
             'journal_id': journal_id,
-            'amount_total': self.valor_final,
             'invoice_payment_term_id': self.env.ref('l10n_br_nfe_import.payment_term_for_import').id,
         }
         return vals
