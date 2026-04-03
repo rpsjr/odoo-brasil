@@ -965,8 +965,8 @@ class EletronicDocument(models.Model):
             if code == 573:  # Duplicidade, já cancelado
                 return self.action_get_status()
 
-            return self._create_response_cancel(
-                code, motive, resp, justificativa)
+            message = "%s - %s" % (code, motive)
+            raise UserError(message)
 
         # self.env['invoice.eletronic.event'].create({
         #     'code': self.codigo_retorno,
