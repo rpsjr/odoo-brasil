@@ -331,30 +331,44 @@ class AccountMove(models.Model):
         vals = move._prepare_eletronic_doc_vals(products)
         vals['model'] = 'nfe'
 
-        if self.type == 'out_refund':
-            vals['related_document_ids'] = self._create_related_doc(vals)
+        is_devolucao = self.fiscal_position_id.finalidade_emissao == '4'
+        if self.type in ('out_refund', 'in_refund') or is_devolucao:
+            related_docs = self._create_related_doc(vals)
+            if related_docs:
+                vals['related_document_ids'] = related_docs
+                
+                chaves = [d[2]['access_key'] for d in related_docs if d[2].get('access_key')]
+                if chaves:
+                    prefix = " Devolução referente a NFe: " if self.fiscal_position_id.finalidade_emissao == '4' else " Documento Referenciado: "
+                    texto_chaves = prefix + ", ".join(chaves)
+                    vals['informacoes_complementares'] = (vals.get('informacoes_complementares') or '') + texto_chaves
 
         vals['document_line_ids'] = move._prepare_eletronic_line_vals(products)
         vals.update(self.sum_line_taxes(vals))
         self.env['eletronic.document'].create(vals)
 
     def _create_related_doc(self, vals):
-        related_move_id = self.env['account.move'].search([
-            ('reversal_move_id', 'in', self.id)], limit=1)
+        related_move_id = getattr(self, 'reversed_entry_id', False)
+        if not related_move_id:
+            related_move_id = self.env['account.move'].search([
+                ('reversal_move_id', 'in', [self.id])], limit=1)
+
+        if not related_move_id:
+            return False
 
         doc = self.env['eletronic.document'].search([
             ('move_id', '=', related_move_id.id),
             ('model', '=', vals['model']),
-            ('state', '=', 'done')
+            ('state', 'in', ('done', 'imported'))
         ], limit=1, order='id desc')
 
         if doc:
-            related_doc = self.env['nfe.related.document'].create({
+            return [(0, 0, {
                 'move_related_id': related_move_id.id,
                 'document_type': 'nfe',
                 'access_key': doc.chave_nfe,
-            })
-            return related_doc
+            })]
+        return False
 
     def action_post(self):
         moves = self.filtered(lambda x: x.l10n_br_edoc_policy == 'directly' and x.type != 'entry')

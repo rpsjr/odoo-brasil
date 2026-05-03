@@ -633,8 +633,17 @@ class EletronicDocument(models.Model):
             'tPag': '90',  # TODO Verificar esse campo aqui
             'vPag': '0.00',
         }
+        infCpl = self.informacoes_complementares or ''
+        chaves = [doc.access_key for doc in self.related_document_ids if doc.document_type == 'nfe' and doc.access_key]
+        if chaves:
+            prefix = " Devolução referente a NFe: " if self.finalidade_emissao == '4' else " Documento Referenciado: "
+            texto_chaves = prefix + ", ".join(chaves)
+            if texto_chaves not in infCpl:
+                infCpl += texto_chaves
+                self.informacoes_complementares = infCpl
+
         infAdic = {
-            'infCpl': self.informacoes_complementares or '',
+            'infCpl': infCpl.strip(),
             'infAdFisco': self.informacoes_legais or '',
         }
         compras = {
