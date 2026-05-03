@@ -331,9 +331,9 @@ class AccountMove(models.Model):
         vals = move._prepare_eletronic_doc_vals(products)
         vals['model'] = 'nfe'
 
-        is_devolucao = self.fiscal_position_id.finalidade_emissao == '4'
-        if self.type in ('out_refund', 'in_refund') or is_devolucao:
-            related_docs = self._create_related_doc(vals)
+        is_devolucao = move.fiscal_position_id.finalidade_emissao == '4'
+        if move.type in ('out_refund', 'in_refund') or is_devolucao:
+            related_docs = move._create_related_doc(vals)
             if related_docs:
                 vals['related_document_ids'] = related_docs
                 
@@ -356,11 +356,13 @@ class AccountMove(models.Model):
         if not related_move_id:
             return False
 
-        doc = self.env['eletronic.document'].search([
-            ('move_id', '=', related_move_id.id),
-            ('model', '=', vals['model']),
-            ('state', 'in', ('done', 'imported'))
-        ], limit=1, order='id desc')
+        doc = getattr(related_move_id, 'eletronic_doc_id', False)
+        if not doc:
+            doc = self.env['eletronic.document'].search([
+                ('move_id', '=', related_move_id.id),
+                ('model', '=', vals['model']),
+                ('state', 'in', ('done', 'imported'))
+            ], limit=1, order='id desc')
 
         if doc:
             return [(0, 0, {

@@ -640,7 +640,7 @@ class EletronicDocument(models.Model):
             texto_chaves = prefix + ", ".join(chaves)
             if texto_chaves not in infCpl:
                 infCpl += texto_chaves
-                self.informacoes_complementares = infCpl
+                self.write({'informacoes_complementares': infCpl})
 
         infAdic = {
             'infCpl': infCpl.strip(),
