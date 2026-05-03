@@ -154,6 +154,8 @@ class AccountMove(models.Model):
 
     @api.onchange(
         "invoice_line_ids",
+        "invoice_line_ids.price_unit",
+        "invoice_line_ids.quantity",
     )
     def _compute_l10n_br_delivery_amount(self):
         for item in self:
@@ -161,6 +163,11 @@ class AccountMove(models.Model):
                 lambda x: x.l10n_br_is_delivery
             )
             if item.type in ('in_refund', 'out_refund'):
+                for line in item.invoice_line_ids:
+                    if not line.is_delivery_expense_or_insurance() and line._origin.id and line._origin.quantity:
+                        if line.quantity != line._origin.quantity:
+                            ratio = line.quantity / line._origin.quantity
+                            line.l10n_br_delivery_amount = round(line._origin.l10n_br_delivery_amount * ratio, 2)
                 lines_total = round(sum(
                     line.l10n_br_delivery_amount for line in item.invoice_line_ids
                     if not line.is_delivery_expense_or_insurance()
@@ -193,6 +200,11 @@ class AccountMove(models.Model):
                 lambda x: x.l10n_br_is_expense
             )
             if item.type in ('in_refund', 'out_refund'):
+                for line in item.invoice_line_ids:
+                    if not line.is_delivery_expense_or_insurance() and line._origin.id and line._origin.quantity:
+                        if line.quantity != line._origin.quantity:
+                            ratio = line.quantity / line._origin.quantity
+                            line.l10n_br_expense_amount = round(line._origin.l10n_br_expense_amount * ratio, 2)
                 lines_total = round(sum(
                     line.l10n_br_expense_amount for line in item.invoice_line_ids
                     if not line.is_delivery_expense_or_insurance()
@@ -225,6 +237,11 @@ class AccountMove(models.Model):
                 lambda x: x.l10n_br_is_insurance
             )
             if item.type in ('in_refund', 'out_refund'):
+                for line in item.invoice_line_ids:
+                    if not line.is_delivery_expense_or_insurance() and line._origin.id and line._origin.quantity:
+                        if line.quantity != line._origin.quantity:
+                            ratio = line.quantity / line._origin.quantity
+                            line.l10n_br_insurance_amount = round(line._origin.l10n_br_insurance_amount * ratio, 2)
                 lines_total = round(sum(
                     line.l10n_br_insurance_amount for line in item.invoice_line_ids
                     if not line.is_delivery_expense_or_insurance()
@@ -272,16 +289,6 @@ class AccountMoveLine(models.Model):
             or self.l10n_br_is_expense
             or self.l10n_br_is_insurance
         )
-
-    @api.onchange('quantity')
-    def _onchange_quantity_l10n_br_amounts(self):
-        for line in self:
-            if line.move_id.type in ('in_refund', 'out_refund') and line._origin.id:
-                if line._origin.quantity:
-                    ratio = line.quantity / line._origin.quantity
-                    line.l10n_br_delivery_amount = round(line._origin.l10n_br_delivery_amount * ratio, 2)
-                    line.l10n_br_expense_amount = round(line._origin.l10n_br_expense_amount * ratio, 2)
-                    line.l10n_br_insurance_amount = round(line._origin.l10n_br_insurance_amount * ratio, 2)
 
     @api.depends(
         "debit", "credit", "account_id.internal_type", "amount_residual"
