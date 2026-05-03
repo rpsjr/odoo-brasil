@@ -273,6 +273,16 @@ class AccountMoveLine(models.Model):
             or self.l10n_br_is_insurance
         )
 
+    @api.onchange('quantity')
+    def _onchange_quantity_l10n_br_amounts(self):
+        for line in self:
+            if line.move_id.type in ('in_refund', 'out_refund') and line._origin.id:
+                if line._origin.quantity:
+                    ratio = line.quantity / line._origin.quantity
+                    line.l10n_br_delivery_amount = round(line._origin.l10n_br_delivery_amount * ratio, 2)
+                    line.l10n_br_expense_amount = round(line._origin.l10n_br_expense_amount * ratio, 2)
+                    line.l10n_br_insurance_amount = round(line._origin.l10n_br_insurance_amount * ratio, 2)
+
     @api.depends(
         "debit", "credit", "account_id.internal_type", "amount_residual"
     )
